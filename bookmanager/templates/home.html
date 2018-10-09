@@ -1,0 +1,31 @@
+<html>
+  <body>
+    <h1>Add book</h1>
+	<p>{{create_error}}</p>
+    <form method="POST" action="/resource/book">
+        <input type="text" name="title">
+        <input type="submit" value="Add">
+    </form>
+
+	
+
+    <h1>Get book</h1>
+    <form method="GET" action="/resource/book">
+        <input type="text" name="title">
+        <input type="submit" value="Search">
+    </form>
+	
+
+	<form method="GET" action="/resource/book">
+		<input type="submit" name="show_all" value="Show All">
+	</form>
+
+    <h1>Books</h1>
+    	{% for book in books %}
+	  <p>{{book.title}}</p>
+	  <form method="GET" action="/resource/book/{{book.title}}">
+	    <input type="submit" value="Details">
+	  </form>
+	{% endfor %}
+  </body>
+</html>

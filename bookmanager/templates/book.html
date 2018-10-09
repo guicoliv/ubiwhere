@@ -1,0 +1,22 @@
+<html>
+  <body>
+    <h1>Update book: {{book.title}}</h1>
+    <form method="POST" action="/resource/book/{{book.title}}">
+	    <input type="hidden" name="_method" value="UPDATE">
+	    <input type="hidden" value="{{book.title}}" name="oldtitle">
+	    <input type="text" name="newtitle">
+	    <input type="submit" value="Update">
+    </form>
+
+    <h1>Remove book</h1>
+    <form method="POST" action="/resource/book/{{book.title}}">
+	<input type="hidden" name="_method" value="DELETE">
+        <input type="submit" value="Delete">
+    </form>
+
+
+    <form method="GET" action="/">
+        <input type="submit" value="Back">
+    </form>
+  </body>
+</html>
