@@ -4,7 +4,6 @@ from flask import Flask
 from flask import render_template
 from flask import request
 from flask import redirect
-from flask import abort
 
 from flask_sqlalchemy import SQLAlchemy
 
@@ -46,10 +45,7 @@ def book_home():
 @app.route("/resource/book/<title>", methods=["GET"])
 def BookDetails(title): 
     books = Book.query.get(title)
-    if books:
-        return render_template("book.html", book = books), 200
-    else:
-        abort(404)
+    return render_template("book.html", book = books)
 
 @app.route("/resource/book/<title>", methods=["POST"])
 def UpdateBook(title):
