@@ -1,12 +1,8 @@
-import os
-
-from flask import Flask
-from flask import render_template
-from flask import request
-from flask import redirect
-from flask import jsonify
+from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
+from flask import abort
+import os
 
 project_dir = os.path.dirname(os.path.abspath(__file__))
 database_file = "sqlite:///{}".format(os.path.join(project_dir, "bookdb2.db"))
@@ -50,12 +46,18 @@ def add_book():
     writer = request.json['writer']
     year = request.json['year']
 
+    all_books = Book.query.all()
+
+    for bk in all_books:
+        if bk.title = title:
+            return abort(409)
+
     new_book = Book(title, writer, year)
 
     db.session.add(new_book)
     db.session.commit()
 
-    return jsonify(new_book)
+    return book_schema.jsonify(new_book)
 
 
 # endpoint to show all books
@@ -70,33 +72,42 @@ def get_book():
 @app.route("/book/<id>", methods=["GET"])
 def book_detail(id):
     book = Book.query.get(id)
-    return book_schema.jsonify(book)
-
+    if book:
+        return book_schema.jsonify(book)
+    else:
+        return abort(404)
 
 # endpoint to update book
 @app.route("/book/<id>", methods=["PUT"])
 def book_update(id):
     book = Book.query.get(id)
-    title = request.json['title']
-    writer = request.json['writer']
-    year = request.json['year']
+    if book:
+        title = request.json['title']
+        writer = request.json['writer']
+        year = request.json['year']
 
-    book.title = title 
-    book.writer = writer
-    book.year = year
+        book.title = title 
+        book.writer = writer
+        book.year = year
 
-    db.session.commit()
-    return book_schema.jsonify(book)
+        db.session.commit()
+        return book_schema.jsonify(book)
+    else:
+        return abort(404)
+            
 
 
 # endpoint to delete book
 @app.route("/book/<id>", methods=["DELETE"])
 def book_delete(id):
     book = Book.query.get(id)
-    db.session.delete(book)
-    db.session.commit()
+    if book:
+        db.session.delete(book)
+        db.session.commit()
 
-    return book_schema.jsonify(book)
+        return book_schema.jsonify(book)
+    else:
+        return abor(404)
 
 
 if __name__ == '__main__':
