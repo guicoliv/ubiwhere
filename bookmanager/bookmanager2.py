@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flask import abort
+import datetime
 import os
 
 project_dir = os.path.dirname(os.path.abspath(__file__))
@@ -32,7 +33,7 @@ class Book(db.Model):
 class BookSchema(ma.Schema):
     class Meta:
         # Fields to expose
-        fields = ('title', 'writer', 'year')
+        fields = ('id', 'title', 'writer', 'year')
 
 
 book_schema = BookSchema()
@@ -46,18 +47,23 @@ def add_book():
     writer = request.json['writer']
     year = request.json['year']
 
+    print(title)
+    date = datetime.datetime.now()
+    if title.isspace() or not title or year>date.year:
+        return "Invalid fields", 403
+
     all_books = Book.query.all()
 
     for bk in all_books:
-        if bk.title = title:
-            return abort(409)
+        if bk.title == title:
+            return "Book with that title already exists", 409
 
     new_book = Book(title, writer, year)
 
     db.session.add(new_book)
     db.session.commit()
 
-    return book_schema.jsonify(new_book)
+    return book_schema.jsonify(new_book), 201
 
 
 # endpoint to show all books
@@ -75,25 +81,47 @@ def book_detail(id):
     if book:
         return book_schema.jsonify(book)
     else:
-        return abort(404)
+        return "There is no such book",404
 
 # endpoint to update book
 @app.route("/book/<id>", methods=["PUT"])
 def book_update(id):
-    book = Book.query.get(id)
-    if book:
-        title = request.json['title']
-        writer = request.json['writer']
-        year = request.json['year']
 
-        book.title = title 
-        book.writer = writer
-        book.year = year
+    print(id)
+    print(type(id))
+    if id.isdigit():
+        book = Book.query.get(id)
+        if book:
+            title = request.json['title']
+            writer = request.json['writer']
+            year = request.json['year']
 
-        db.session.commit()
-        return book_schema.jsonify(book)
+            book.title = title 
+            book.writer = writer
+            book.year = year
+
+            db.session.commit()
+            return book_schema.jsonify(book)
+        else:
+            return "There is no such book",404
     else:
-        return abort(404)
+        books = Book.query.all()
+        for b in books:
+            if id == b.title:
+                book = b
+                if book:
+                    title = request.json['title']
+                    writer = request.json['writer']
+                    year = request.json['year']
+
+                    book.title = title 
+                    book.writer = writer
+                    book.year = year
+
+                    db.session.commit()
+                    return book_schema.jsonify(book)
+                else:
+                    return "There is no such book",404
             
 
 
@@ -107,7 +135,7 @@ def book_delete(id):
 
         return book_schema.jsonify(book)
     else:
-        return abor(404)
+        return "There is no such book",404
 
 
 if __name__ == '__main__':
