@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flask import abort
+from sqlalchemy.orm import *
 import datetime
 import os
 
@@ -18,33 +19,52 @@ ma = Marshmallow(app)
 
 
 class Book(db.Model):
+    __tablename__='books'
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(80), unique=True, nullable = False)
-    writer = db.Column(db.String(50), nullable=False)
     year = db.Column(db.Integer, nullable=True)
+    writer_id = db.Column(db.Integer, db.ForeignKey('writers.id'))
 
-    def __init__(self, title, writer, year):
+    def __init__(self, title, writer_id, year):
         self.title = title
-        self.writer = writer
+        self.writer_id = writer_id
         self.year = year
+
+class Writer(db.Model):
+    __tablename__='writers'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), unique=True, nullable = False)
+    birth_year = db.Column(db.Integer, nullable=True)
+    books = db.relationship('Book', backref='writer')
+
+    def __init__(self, name, birth_year):
+        self.name = name
+        self.birth_year = birth_year
+
         
 
 
 class BookSchema(ma.Schema):
     class Meta:
         # Fields to expose
-        fields = ('id', 'title', 'writer', 'year')
+        fields = ('id', 'title', 'writer_id', 'year')
+
+class WriterSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'name', 'birth_year')
 
 
 book_schema = BookSchema()
 books_schema = BookSchema(many=True)
+writer_schema = WriterSchema()
+writers_schema = WriterSchema(many=True)
 
 
 # endpoint to create new book
 @app.route("/book", methods=["POST"])
 def add_book():
     title = request.json['title']
-    writer = request.json['writer']
+    writer_id = request.json['writer_id']
     year = request.json['year']
 
     print(title)
@@ -58,12 +78,35 @@ def add_book():
         if bk.title == title:
             return "Book with that title already exists", 409
 
-    new_book = Book(title, writer, year)
+    new_book = Book(title, writer_id, year)
 
     db.session.add(new_book)
     db.session.commit()
 
     return book_schema.jsonify(new_book), 201
+
+@app.route("/writer", methods=["POST"])
+def add_writer():
+
+    name = request.json['name']
+    birth_year = request.json['birth_year']
+
+    date = datetime.datetime.now()
+    if name.isspace() or not name or birth_year>date.year-14:
+        return "Invalid fields", 403
+
+    all_writers = Writer.query.all()
+
+    for wr in all_writers:
+        if wr.name == name:
+            return "Writer with that name already exists", 409
+
+    new_writer = Writer(name, birth_year)
+
+    db.session.add(new_writer)
+    db.session.commit()
+
+    return writer_schema.jsonify(new_writer), 201
 
 
 # endpoint to show all books
@@ -73,55 +116,92 @@ def get_book():
     result = books_schema.dump(all_books)
     return jsonify(result.data)
 
+@app.route("/writer", methods=["GET"])
+def get_writer():
+    all_writers = Writer.query.all()
+    result = writers_schema.dump(all_writers)
+    return jsonify(result.data)
+
 
 # endpoint to get book detail by id
 @app.route("/book/<id>", methods=["GET"])
 def book_detail(id):
-    book = Book.query.get(id)
-    if book:
-        return book_schema.jsonify(book)
+
+
+
+    if id.isdigit():
+        book = Book.query.get(id)
+        if book:
+            return book_schema.jsonify(book)
+        else:
+            return "There is no such book",404
     else:
-        return "There is no such book",404
+        books_res = []
+        books = Book.query.all()
+        for b in books:
+            if id.lower() in b.title.lower():
+                books_res.append(b)
+        if books_res:
+            return books_schema.jsonify(books_res)
+        else:
+            return "There is no such book",404
+            
+
+@app.route("/writer/<id>", methods=["GET"])
+def writer_detail(id):
+    writer = Writer.query.get(id)
+    if writer:
+        return writer_schema.jsonify(writer)
+    else:
+        return "There is no such writer",404
 
 # endpoint to update book
 @app.route("/book/<id>", methods=["PUT"])
 def book_update(id):
-
-    print(id)
-    print(type(id))
     if id.isdigit():
         book = Book.query.get(id)
-        if book:
-            title = request.json['title']
-            writer = request.json['writer']
-            year = request.json['year']
-
-            book.title = title 
-            book.writer = writer
-            book.year = year
-
-            db.session.commit()
-            return book_schema.jsonify(book)
-        else:
-            return "There is no such book",404
     else:
         books = Book.query.all()
         for b in books:
             if id == b.title:
                 book = b
-                if book:
-                    title = request.json['title']
-                    writer = request.json['writer']
-                    year = request.json['year']
 
-                    book.title = title 
-                    book.writer = writer
-                    book.year = year
+    if book:
+        title = request.json['title']
+        writer_id = request.json['writer_id']
+        year = request.json['year']
+        book.title = title 
+        book.writer_id = writer_id
+        book.year = year
 
-                    db.session.commit()
-                    return book_schema.jsonify(book)
-                else:
-                    return "There is no such book",404
+        db.session.commit()
+        return book_schema.jsonify(book)
+    else:
+        return "There is no such book",404
+
+
+@app.route("/writer/<id>", methods=["PUT"])
+def writer_update(id):
+    if id.isdigit():
+        writer = Writer.query.get(id)
+    else:
+        writers = Writer.query.all()
+        for w in writers:
+            if id == w.name:
+                writer = w
+
+    if writer:
+
+        name = request.json['name']
+        birth_year = request.json['birth_year']
+
+        writer.name = name
+        writer.birth_year = birth_year
+
+        db.session.commit()
+        return writer_schema.jsonify(writer)
+    else:
+        return "There is no such writer",404
             
 
 
@@ -137,6 +217,35 @@ def book_delete(id):
     else:
         return "There is no such book",404
 
+@app.route("/writer/<id>", methods=["DELETE"])
+def writer_delete(id):
+    writer = Writer.query.get(id)
+    if writer:
+        db.session.delete(writer)
+        db.session.commit()
+
+        return writer_schema.jsonify(writer)
+    else:
+        return "There is no such writer",404
+
+@app.route("/book/writer/<id>", methods=["GET"])
+def get_books_writer(id):
+    writer = Writer.query.get(id)
+    if writer:
+        books = writer.books
+        return books_schema.jsonify(books)
+    else:
+        return "There is no such writer", 404
+
+@app.route("/writer/book/<id>", methods=["GET"])
+def get_writer_book(id):
+    book = Book.query.get(id)
+    if book:
+        writer = book.writer
+        return writer_schema.jsonify(writer)
+    else:
+        return "There is no such book", 404
+
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')
