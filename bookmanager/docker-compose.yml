@@ -1,12 +1,16 @@
-version: "3"
+version: "3.2"
 services:
   web:
     # replace username/repo:tag with your name and image details
-    image: aiqer/goliveirarep:bookmanager
+    image: aiqer/goliveirarep:bm2
     ports:
       - "5000:5000"
-    networks:
-      - webnet
-networks:
-  webnet:
-
+    volumes:
+      - type: volume
+        source: bm2_db
+        target: /var/lib/docker/volumes/bm2_db/_data
+    ports:
+      - "5000:5000"
+      
+volumes:
+  bm2_db:
