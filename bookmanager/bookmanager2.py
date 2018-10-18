@@ -78,6 +78,10 @@ def add_book():
         if bk.title == title:
             return "Book with that title already exists", 409
 
+    writer = Writer.query.get(writer_id)
+    if not writer:
+        return "There is no writer with that id",404
+
     new_book = Book(title, writer_id, year)
 
     db.session.add(new_book)
